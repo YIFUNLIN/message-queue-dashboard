@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式訊息佇列技術儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Subtle Accents -->
+    <!-- Application Structure Plan: The SPA is designed with a top-down, thematic structure to guide the user from foundational concepts to practical applications and comparisons. It starts with a clear header and navigation bar ("核心概念", "傳遞模式", "技術對決"). The main sections are: 1. **Introduction**: A brief overview of asynchronous communication. 2. **Core Concepts**: Interactive cards explaining key terms like Producer, Consumer, Queue, and Topic. This visual, non-linear approach is more engaging than plain text. 3. **Messaging Patterns**: A grid layout showcasing common patterns (P2P, Pub/Sub, etc.) with simple diagrams made from HTML/CSS, making abstract concepts tangible. 4. **Technology Showdown**: The centerpiece, featuring an interactive comparison. Users can click buttons to dynamically update a Chart.js radar chart, comparing RabbitMQ, SQS, and Kafka across key metrics. This direct interaction makes the comparison more memorable and easier to synthesize than a static table. This structure was chosen to transform a dense report into an exploratory learning tool, prioritizing user engagement and direct comparison over a passive reading experience. -->
+    <!-- Visualization & Content Choices: 1. **Core Concepts Diagram (Producer/Consumer)** -> Goal: Inform -> Viz: HTML/CSS diagram -> Interaction: Static visual aid -> Justification: A simple, clear visual is more effective than text alone for explaining the fundamental flow. 2. **Messaging Patterns Diagrams** -> Goal: Organize/Inform -> Viz: HTML/CSS flexbox diagrams -> Interaction: Static visual aids within cards -> Justification: Simplifies complex patterns into easy-to-understand visual flows, enhancing comprehension. 3. **Technology Comparison Chart** -> Goal: Compare -> Viz: Chart.js Radar Chart -> Interaction: Buttons to dynamically change the displayed dataset (Throughput, Latency, etc.) -> Justification: A radar chart is excellent for multi-variate comparison. The interactivity allows users to focus on one metric at a time, preventing information overload and making the differences between technologies stark and clear. Library: Chart.js. 4. **Text Content**: Key definitions and explanations are presented in concise paragraphs within styled cards to improve readability and break down the information into digestible chunks. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #D97706; /* Amber-600 */
+            border-bottom-color: #D97706;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #F3F4F6; /* Gray-100 */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .btn {
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn.active {
+            background-color: #D97706 !important;
+            color: #FFFFFF !important;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 50vh;
+            max-height: 450px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-amber-700">訊息佇列深度解析</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#concepts" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">核心概念</a>
+                <a href="#patterns" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">傳遞模式</a>
+                <a href="#showdown" class="nav-link text-gray-600 border-b-2 border-transparent pb-1">技術對決</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                <span class="text-2xl">☰</span>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#concepts" class="block py-2 text-gray-600">核心概念</a>
+            <a href="#patterns" class="block py-2 text-gray-600">傳遞模式</a>
+            <a href="#showdown" class="block py-2 text-gray-600">技術對決</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+
+        <section id="intro" class="text-center mb-20">
+            <h2 class="text-4xl font-bold mb-4 text-amber-800">現代系統架構的基石</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600">
+                在分散式系統中，非同步通訊是提升效能、擴展性與韌性的關鍵。訊息佇列 (Message Queue) 作為此架構的核心，透過解耦服務、緩衝流量，確保了系統的穩定與高效。本儀表板將帶您深入了解其運作原理、設計模式及主流技術的權衡。
+            </p>
+        </section>
+
+        <section id="concepts" class="mb-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-12">核心概念</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-bold mb-3 text-amber-700">生產者-消費者模型</h3>
+                    <p class="text-gray-600 mb-4">此模型是訊息佇列的基礎，由三個核心組件構成，實現了服務間的非同步通訊。</p>
+                    <div class="border-t pt-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-blue-100 text-blue-800 rounded-lg p-3 text-center">
+                                <div class="font-bold">生產者</div>
+                                <div class="text-sm">發送訊息</div>
+                            </div>
+                            <div class="text-2xl text-gray-400">→</div>
+                             <div class="bg-green-100 text-green-800 rounded-lg p-3 text-center">
+                                <div class="font-bold">佇列</div>
+                                <div class="text-sm">儲存訊息</div>
+                            </div>
+                            <div class="text-2xl text-gray-400">→</div>
+                             <div class="bg-purple-100 text-purple-800 rounded-lg p-3 text-center">
+                                <div class="font-bold">消費者</div>
+                                <div class="text-sm">處理訊息</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-bold mb-3 text-amber-700">佇列 (Queue) vs. 主題 (Topic)</h3>
+                    <p class="text-gray-600 mb-4">兩者代表了不同的通訊模型，是架構設計中的關鍵決策。</p>
+                    <div class="space-y-3">
+                        <p><strong class="text-blue-600">佇列 (Queue):</strong> 點對點模型。一則訊息只會被一個消費者處理，適用於任務分發。</p>
+                        <p><strong class="text-green-600">主題 (Topic):</strong> 發布/訂閱模型。訊息會廣播給所有訂閱者，適用於事件通知。</p>
+                    </div>
+                </div>
+
+                <div class="card rounded-xl p-6">
+                    <h3 class="text-xl font-bold mb-3 text-amber-700">訊息確認 (ACK) 與 DLQ</h3>
+                    <p class="text-gray-600 mb-4">這是確保訊息可靠性與系統容錯能力的兩大重要機制。</p>
+                     <div class="space-y-3">
+                        <p><strong class="text-blue-600">ACK:</strong> 消費者成功處理訊息後的回應，防止數據遺失，確保「至少處理一次」。</p>
+                        <p><strong class="text-red-600">DLQ (死亡訊息佇列):</strong> 存放處理失敗的「毒藥訊息」，避免阻塞主流程，提升系統韌性。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="patterns" class="mb-20 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-12">常見傳遞模式</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="card rounded-xl p-6 text-center">
+                    <h3 class="text-lg font-bold mb-3">點對點 (Point-to-Point)</h3>
+                    <div class="h-24 flex items-center justify-center">
+                         <div class="flex items-center space-x-2">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-800">P</div>
+                            <div class="w-16 h-1 bg-gray-300"></div>
+                            <div class="w-12 h-12 border-2 border-dashed border-gray-400 rounded-lg"></div>
+                            <div class="w-16 h-1 bg-gray-300"></div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800">C</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">一則訊息，單一消費者。適合任務委派。</p>
+                </div>
+                <div class="card rounded-xl p-6 text-center">
+                    <h3 class="text-lg font-bold mb-3">發布/訂閱 (Pub/Sub)</h3>
+                     <div class="h-24 flex items-center justify-center">
+                        <div class="relative w-24 h-24">
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-800">T</div>
+                            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800 text-xs">C1</div>
+                            <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800 text-xs">C2</div>
+                            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800 text-xs">C3</div>
+                        </div>
+                     </div>
+                    <p class="text-sm text-gray-600">一則訊息，多個訂閱者。事件廣播核心。</p>
+                </div>
+                <div class="card rounded-xl p-6 text-center">
+                    <h3 class="text-lg font-bold mb-3">工作佇列 (Work Queue)</h3>
+                    <div class="h-24 flex items-center justify-center">
+                         <div class="flex items-center space-x-2">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center font-bold text-blue-800">P</div>
+                            <div class="w-16 h-1 bg-gray-300"></div>
+                            <div class="w-12 h-12 border-2 border-dashed border-gray-400 rounded-lg"></div>
+                            <div class="w-16 h-1 bg-gray-300"></div>
+                            <div class="flex flex-col space-y-2">
+                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800 text-xs">C1</div>
+                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center font-bold text-purple-800 text-xs">C2</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">多個消費者競爭處理，實現負載均衡。</p>
+                </div>
+                <div class="card rounded-xl p-6 text-center">
+                    <h3 class="text-lg font-bold mb-3">請求/回覆 (Request/Reply)</h3>
+                    <div class="h-24 flex items-center justify-center text-sm">
+                        <div class="flex flex-col items-center space-y-1">
+                            <div class="font-bold text-blue-800">請求方</div>
+                            <div class="flex items-center">
+                                <span class="text-gray-400 text-2xl">→</span>
+                                <div class="mx-2 w-10 h-6 border-2 border-dashed border-gray-400 rounded"></div>
+                                <span class="text-gray-400 text-2xl">→</span>
+                            </div>
+                            <div>回覆佇列</div>
+                             <div class="flex items-center">
+                                <span class="text-gray-400 text-2xl">←</span>
+                                <div class="mx-2 w-10 h-6 border-2 border-dashed border-gray-400 rounded"></div>
+                                <span class="text-gray-400 text-2xl">←</span>
+                            </div>
+                            <div class="font-bold text-purple-800">回覆方</div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">在非同步通道上模擬同步請求與回應。</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="showdown" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-4">技術對決：互動式比較</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">點擊下方按鈕，動態比較 RabbitMQ、Amazon SQS 和 Apache Kafka 在不同關鍵指標上的表現。</p>
+            
+            <div class="flex justify-center flex-wrap gap-3 mb-8">
+                <button class="btn active bg-amber-600 text-white px-4 py-2 rounded-full shadow" data-metric="throughput">吞吐量</button>
+                <button class="btn bg-white text-amber-700 px-4 py-2 rounded-full shadow" data-metric="latency">延遲</button>
+                <button class="btn bg-white text-amber-700 px-4 py-2 rounded-full shadow" data-metric="routing">路由能力</button>
+                <button class="btn bg-white text-amber-700 px-4 py-2 rounded-full shadow" data-metric="ops">維運複雜度</button>
+            </div>
+
+            <div class="card rounded-xl p-6">
+                <div class="chart-container">
+                    <canvas id="techComparisonChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white mt-20 border-t">
+        <div class="container mx-auto px-6 py-6 text-center text-gray-500">
+            <p>&copy; 2025 互動式訊息佇列技術儀表板。基於報告資料生成。</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            const navLinks = document.querySelectorAll('.nav-link, #mobile-menu a');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    if (mobileMenu.classList.contains('hidden') === false) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+
+            const techData = {
+                labels: ['RabbitMQ', 'Amazon SQS', 'Apache Kafka'],
+                metrics: {
+                    throughput: {
+                        label: '吞吐量 (越高越好)',
+                        data: [7, 8, 10], 
+                        backgroundColor: 'rgba(217, 119, 6, 0.2)',
+                        borderColor: 'rgba(217, 119, 6, 1)',
+                    },
+                    latency: {
+                        label: '延遲 (越低越好)',
+                        data: [8, 5, 9], 
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                    },
+                    routing: {
+                        label: '路由能力 (越高越好)',
+                        data: [10, 4, 5],
+                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                        borderColor: 'rgba(22, 163, 74, 1)',
+                    },
+                    ops: {
+                        label: '維運複雜度 (越低越好)',
+                        data: [6, 10, 3],
+                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                        borderColor: 'rgba(220, 38, 38, 1)',
+                    }
+                }
+            };
+
+            const ctx = document.getElementById('techComparisonChart').getContext('2d');
+            let comparisonChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: techData.labels,
+                    datasets: [{
+                        label: techData.metrics.throughput.label,
+                        data: techData.metrics.throughput.data,
+                        backgroundColor: techData.metrics.throughput.backgroundColor,
+                        borderColor: techData.metrics.throughput.borderColor,
+                        borderWidth: 2,
+                        pointBackgroundColor: techData.metrics.throughput.borderColor,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: techData.metrics.throughput.borderColor
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                color: '#4A4A4A'
+                            },
+                            ticks: {
+                                backdropColor: 'rgba(255, 255, 255, 0.75)',
+                                stepSize: 2,
+                                beginAtZero: true,
+                                max: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 16
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.r !== null) {
+                                        label += context.parsed.r + ' / 10';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const buttons = document.querySelectorAll('.btn[data-metric]');
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const metric = button.dataset.metric;
+                    const metricData = techData.metrics[metric];
+
+                    buttons.forEach(btn => btn.classList.remove('active', 'bg-amber-600', 'text-white'));
+                    buttons.forEach(btn => {
+                        btn.classList.add('bg-white', 'text-amber-700');
+                    });
+                    
+                    button.classList.add('active', 'bg-amber-600', 'text-white');
+                    button.classList.remove('bg-white', 'text-amber-700');
+
+                    comparisonChart.data.datasets[0].label = metricData.label;
+                    comparisonChart.data.datasets[0].data = metricData.data;
+                    comparisonChart.data.datasets[0].backgroundColor = metricData.backgroundColor;
+                    comparisonChart.data.datasets[0].borderColor = metricData.borderColor;
+                    comparisonChart.data.datasets[0].pointBackgroundColor = metricData.borderColor;
+                    comparisonChart.data.datasets[0].pointHoverBorderColor = metricData.borderColor;
+                    comparisonChart.update();
+                });
+            });
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href').substring(1) === entry.target.id) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, { rootMargin: "-50% 0px -50% 0px" });
+
+            document.querySelectorAll('section').forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>
